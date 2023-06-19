@@ -1,0 +1,25 @@
+{
+    "color_theme": "resources/themes/dark.json",
+    "supported_import_types": [
+        [
+            "Image Types",
+            [
+                ".png",
+                ".jpg",
+                ".jpeg"
+            ]
+        ],
+        [
+            "PNG Images",
+            ".png"
+        ],
+        [
+            "JPG Images",
+            ".jpg"
+        ],
+        [
+            "JPEG Images",
+            ".jpeg"
+        ]
+    ]
+}
