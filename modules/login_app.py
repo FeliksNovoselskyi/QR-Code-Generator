@@ -259,6 +259,18 @@ class LoginApp(CTk):
                             username = incoming_login,
                             email = incoming_email
                         )
+                        profile_path = os.path.abspath(f"resources/profiles/{incoming_login}")
+                        
+                        if not os.path.exists(profile_path):
+                            os.mkdir(profile_path)
+                            os.mkdir(os.path.join(profile_path, "qrcodes"))
+                        
+                        main_app.app.QRCODE_IMAGE.set_profile_name(profile_name = incoming_login)
+                        main_app.app.QRCODE_IMAGE.set_qrcode_path()
+                        
+                        # main_app.app.QRCODE_IMAGE.PROFILE_NAME = incoming_login
+                        
+                        
 
                         messagebox.showinfo("Успішно!", "Користувача зарєстровано!")
                         main_app.app.mainloop()
@@ -298,6 +310,10 @@ class LoginApp(CTk):
                     username = username,
                     email = incoming_email
                 )
+                
+                main_app.app.QRCODE_IMAGE.set_profile_name(profile_name = username)
+                main_app.app.QRCODE_IMAGE.set_qrcode_path()
+                main_app.app.QRCODE_IMAGE.view_qrcode_history()
                 main_app.app.mainloop()
             else:
                 messagebox.showerror("Помилка!", "Невірне ім'я користувача/пароль")

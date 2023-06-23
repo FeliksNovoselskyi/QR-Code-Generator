@@ -13,7 +13,7 @@ from settings import THEME
 from modules.gui.tool_tip import ToolTip
 from modules.gui.custom_button import Button
 import modules.main_app as main_app
-
+from settings import SETTINGS
 
 
 DEFAULT = {
@@ -103,7 +103,6 @@ class ChooseModule(CTk):
     def apply_to_qrcode(self, preview_type):
         global QR_SETTINGS
         
-        print(QR_SETTINGS["fill_color"], QR_SETTINGS["back_color"])
         self.QRCODE_IMAGE.IMAGE = self.QRCODE.make_image(
             fill_color = QR_SETTINGS["fill_color"],
             back_color = QR_SETTINGS["back_color"],
@@ -143,9 +142,13 @@ class QRCodeImage(CTkLabel):
         self.HEIGHT = height
 
         self.START_IMAGE_PATH = os.path.abspath("resources/images/default.png")
-        self.QRCODE_IMAGE_PATH = os.path.abspath("resources/qrcodes/qrcode.png")
+        
 
         self.QRCODE = None
+        self.QRCODES = []
+        self.QRCODE_IMAGE_PATH = os.path.abspath("resources/qrcode.png")
+        self.PROFILE_NAME = ""
+
         self.VERSION = 1
         self.CORRECTION = qrcode.ERROR_CORRECT_H
         
@@ -159,11 +162,9 @@ class QRCodeImage(CTkLabel):
         self.CTK_IMAGE = CTkImage(Image.open(self.START_IMAGE_PATH), size = (width, height))
         super().__init__(master = master, width = width, height = height, text = "", image = self.CTK_IMAGE)
 
-
-
     def generate(self) -> str:
         global QR_SETTINGS
-        
+
         self.QRCODE = qrcode.QRCode(version = self.VERSION, border = 1, error_correction = self.CORRECTION)
 
         self.DATA = main_app.app.DATA_ENTRY.get()
@@ -175,6 +176,19 @@ class QRCodeImage(CTkLabel):
         QR_SETTINGS = DEFAULT.copy()
         self._handle()
             
+    
+    def view_qrcode_history(self, profile_name=None):
+        qrcodes = [os.path.join(os.path.abspath(f"resources/profiles/{self.PROFILE_NAME}/qrcodes"), rel_qrcode_path) for rel_qrcode_path in self.QRCODES]
+        for qrcode_path in qrcodes:
+            main_app.app.add_qrcode_to_history(qrcode_path)
+        
+    def set_profile_name(self, profile_name):
+        self.PROFILE_NAME = profile_name
+
+    def set_qrcode_path(self):
+        self.QRCODES = os.listdir(os.path.abspath(f"resources/profiles/{self.PROFILE_NAME}/qrcodes"))
+        self.INUSERPROFILE_QRCODE_PATH = os.path.abspath(f"resources/profiles/{self.PROFILE_NAME}/qrcodes/{len(self.QRCODES) + 1}.png")
+
 
     def _handle(self):
         self.CTK_IMAGE = CTkImage(Image.open(self.QRCODE_IMAGE_PATH), size = (self.WIDTH, self.HEIGHT))
@@ -259,14 +273,23 @@ class QRCodeImage(CTkLabel):
             global QR_SETTINGS
 
             try:
-                with filedialog.askopenfile(defaultextension = ".png") as f:
+                with filedialog.askopenfile(defaultextension=".png") as f:
                     QR_SETTINGS["image"] = f.name
-                    self.IMAGE = self.QRCODE.make_image(
-                        image_factory = StyledPilImage,
-                        embeded_image_path = QR_SETTINGS["image"]
-                    )
-                    self.IMAGE.save(self.QRCODE_IMAGE_PATH)
+                    qrcode_with_img = Image.open(self.QRCODE_IMAGE_PATH).convert("RGBA")
+
+                    insert_image = Image.open(QR_SETTINGS["image"]).convert("RGBA")
+            
+                    insert_image = insert_image.resize((96, 96))
+                    insert_image_width, insert_image_height = insert_image.size
+
+                    x = qrcode_with_img.width  // 2 - insert_image_width // 2
+                    y = qrcode_with_img.height // 2 - insert_image_height // 2
+
+                    qrcode_with_img.paste(insert_image, (x, y), mask=insert_image)
+                    qrcode_with_img.save(self.QRCODE_IMAGE_PATH)
+                    
                     self._handle()
+                    
             except TypeError:
                 pass
         else:
@@ -371,14 +394,22 @@ class QRCodeImage(CTkLabel):
 
     def save_image(self):
         if self.QRCODE:
-            try:
-                image_path = filedialog.asksaveasfilename(
-                    defaultextension = ".png",
-                )
-                shutil.copy2(
-                    src = self.QRCODE_IMAGE_PATH,
-                    dst = image_path
-                )
-            except FileNotFoundError: pass
+            # try:
+            image_path = filedialog.asksaveasfilename(
+                defaultextension = ".png",
+                filetypes = SETTINGS["supported_import_types"]
+            )
+            shutil.copy2(
+                src = self.QRCODE_IMAGE_PATH,
+                dst = image_path
+            )
+            self.set_qrcode_path()
+            shutil.copy2(
+                src = self.QRCODE_IMAGE_PATH,
+                dst = self.INUSERPROFILE_QRCODE_PATH
+            )
+            self.SAVE_PATH = image_path
+            main_app.app.add_qrcode_to_history(qrcode_path=self.INUSERPROFILE_QRCODE_PATH)
+                
         else:
             messagebox.showwarning("Увага!", "Будь ласка, створіть спочатку QR-Code!")

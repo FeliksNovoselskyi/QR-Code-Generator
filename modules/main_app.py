@@ -1,7 +1,10 @@
+from datetime import datetime
+import locale
 import os, shutil
 
 from customtkinter import *
 from PIL import Image 
+import pytz
 
 from settings import *
 from modules.gui.select_theme import SelectTheme
@@ -9,6 +12,7 @@ from modules.gui.qrcode_image import QRCodeImage
 from modules.gui.tool_tip import ToolTip
 from modules.utils.json_io import *
 
+locale.setlocale(locale.LC_TIME, 'uk_UA')
 SETTINGS = json_io.read_json(
     json_path = os.path.abspath('settings.json')
 )
@@ -37,6 +41,8 @@ class MainApp(CTk):
             self.WIDTH - self.GENERATE_BUTTON_SIZE[0] - 15,
             self.GENERATE_BUTTON_SIZE[1] - 10
         )
+
+        self.HISTORY_LEN = 0
 
         # Викликаємо метод який змінює основні параметри вікна на потрібні
         self.configure_app()
@@ -67,7 +73,7 @@ class MainApp(CTk):
         self.QRCODE_IMAGE = QRCodeImage(
             master = self.GENERATE_FRAME,
             width = self.QRCODE_IMAGE_SIZE[0],
-            height = self.QRCODE_IMAGE_SIZE[1],
+            height = self.QRCODE_IMAGE_SIZE[1]
         )
         self.QRCODE_IMAGE.place(x = 0, y = 0)
 
@@ -206,6 +212,7 @@ class MainApp(CTk):
             image = CTkImage(Image.open(os.path.abspath("resources/images/buttons/generate.png")), size = (40, 40)),
             command = self.QRCODE_IMAGE.generate
         )
+        ToolTip(self.GENERATE_BUTTON, "Згенерувати QRCode")
         self.GENERATE_BUTTON.place(x = self.BUTTON_WIDTH * 6 + self.BUTTON_PADX * 6, y = self.HEIGHT - self.DATA_ENTRY_SIZE[1] * 2 - 20)
         
 
@@ -221,33 +228,35 @@ class MainApp(CTk):
             border_color = THEME["CTkButton"]["border_color"],
             hover_color = THEME["CTkButton"]["hover_color"],
             border_width = 1,
+            font = CTkFont(family = None, size = 22),
             command = self.add_avatar
         )
         self.ADD_AVATAR_BUTTON.place(x = 10, y = 10)
+        
         
         self.USERNAME_LABEL = CTkLabel(
             master = self.PROFILE_FRAME,
             width = 100,
             height = 20,
-            font = CTkFont(family = None, size = 20)
+            font = CTkFont(family = None, size = 15)
         )
-        self.USERNAME_LABEL.place(x = 110, y = 15)
+        self.USERNAME_LABEL.place(x = 120, y = 20)
 
         self.EMAIL_LABEL = CTkLabel(
             master = self.PROFILE_FRAME,
             width = 100,
             height = 20,
-            font = CTkFont(family = None, size = 20)
+            font = CTkFont(family = None, size = 13)
         )
-        self.EMAIL_LABEL.place(x = 110, y = 45)
+        self.EMAIL_LABEL.place(x = 120, y = 50)
         
         self.DATE_LABEL = CTkLabel(
             master = self.PROFILE_FRAME,
             width = 100,
             height = 20,
-            font = CTkFont(family = None, size = 20)
+            font = CTkFont(family = None, size = 15)
         )
-        self.DATE_LABEL.place(x = 110, y = 75)
+        self.DATE_LABEL.place(x = 120, y = 80)
      
 
         self.SELECT_THEME = SelectTheme(
@@ -260,30 +269,112 @@ class MainApp(CTk):
         )
         self.SELECT_THEME.place(x = 10, y = 130)
 
+
+        self.HISTORY_FRAME = CTkScrollableFrame(
+            master = self.PROFILE_FRAME,
+            width = self.WIDTH - 50,    
+            height = 400,
+            fg_color = THEME["CTkFrame"]["fg_color"],
+            border_color = THEME["CTkFrame"]["border_color"]
+        )
+        
+        self.HISTORY_FRAME.place(x = 8, y = 190)
+
+        
+    def add_qrcode_to_history(self, qrcode_path):
+        qrcode_info_frame = CTkFrame(
+            master = self.HISTORY_FRAME,
+            width = self.WIDTH - 70,
+            height = 120,
+            border_width = 1,
+            fg_color = THEME["CTkFrame"]["fg_color"],
+            border_color = THEME["CTkFrame"]["border_color"]
+        )
+        
+        qrcode_pil_img = Image.open(qrcode_path)
+        CTkLabel(
+            master = qrcode_info_frame,
+            text = '',
+            image = CTkImage(qrcode_pil_img, size=(110, 110))
+        ).place(x = 5, y = 5)
+        
+        size = qrcode_pil_img.width, qrcode_pil_img.height
+        current_time = datetime.fromtimestamp(os.path.getctime(qrcode_path))
+        ukraine_timezone = pytz.timezone('Europe/Kiev')
+        ukraine_time = current_time.astimezone(ukraine_timezone)
+        date = ukraine_time.strftime('%Y-%m-%d %H:%M:%S')
+        filetype = qrcode_pil_img.format
+        
+        self.FILE_NAME = os.path.basename(qrcode_path)
+        self.QRCODE_IMAGE_NAME_LABEL = CTkLabel(
+            master = qrcode_info_frame,
+            width = 100,
+            height = 10,
+            text = f"Назва QR-коду: {self.FILE_NAME}")
+        
+        self.QRCODE_IMAGE_NAME_LABEL.place(x = 120, y = 20)
+
+        self.IMAGE_SIZE_LABEL = CTkLabel(
+            master = qrcode_info_frame,
+            width = 10,
+            height = 10,
+            text = f"Розмір QR-коду: {size}"
+        )
+        self.IMAGE_SIZE_LABEL.place(x = 120, y = 40)
+        
+        self.IMAGE_DATE_LABEL = CTkLabel(
+            master = qrcode_info_frame,
+            width = 10,
+            height = 10,
+            text = f"Дата створення QR-коду: {date}"
+        )
+        self.IMAGE_DATE_LABEL.place(x = 120, y = 60)
+        
+        self.IMAGE_FORMAT_LABEL = CTkLabel(
+            master = qrcode_info_frame,
+            width = 10,
+            height = 10,
+            text = f"Формат зображення QR-коду: {filetype}"
+        )
+        self.IMAGE_FORMAT_LABEL.place(x = 120, y = 80)
+
+        qrcode_info_frame.grid(row = self.HISTORY_LEN, column = 0, padx = 10, pady = 10)
+        self.HISTORY_LEN += 1
+        
+       
+
+
     def set_profile_data(self, creation_date, username, email):
         self.DATE_LABEL.configure(text = f"Дата створення вашого аккаунту: {creation_date}")
         self.USERNAME_LABEL.configure(text = f"Ім'я користувача: {username}")
         self.EMAIL_LABEL.configure(text = f"Пошта користувача: {email}")
 
+    
+    # def show_avatar(self, profile_name):
+    
+    
+    
     def add_avatar(self):
         try:
-            with filedialog.askopenfile(mode = 'r',
-                                        filetypes = SETTINGS["supported_import_types"]
-                                        ) as image:
-
+            with filedialog.askopenfile(mode = 'r', filetypes = SETTINGS["supported_import_types"]) as image:
                 image_path = image.name
-                images_path = os.path.abspath("resources/images/avatars/avatar.png")
-                shutil.copy2(image_path, images_path)
+                dst_path = os.path.abspath(f"resources/profiles/{self.QRCODE_IMAGE.PROFILE_NAME}/avatar.png")
+                shutil.copy2(image_path, dst_path)
+        
+                self.AVATAR_LABLE = CTkLabel(
+                    master = self.PROFILE_FRAME,
+                    width = 100,
+                    height = 100,
+                    text = '',
+                    image = CTkImage(dark_image = Image.open(dst_path), size = (100, 100))
+                )
+                self.AVATAR_LABLE.place(x = 10, y = 10)
+        
         except FileNotFoundError: pass
         
-        self.AVATAR_LABLE = CTkLabel(
-            master = self.PROFILE_FRAME,
-            width = 100,
-            height = 100,
-            text = '',
-            image = CTkImage(dark_image = Image.open("resources/images/avatars/avatar.png"), size = (100, 100))
-        )
-        self.AVATAR_LABLE.place(x = 10, y = 10)
+        
+
+
         
     # Метод у якому задаються параметри головного вікна
     def configure_app(self) -> None:

@@ -6,7 +6,8 @@
             [
                 ".png",
                 ".jpg",
-                ".jpeg"
+                ".jpeg",
+                ".svg"
             ]
         ],
         [
@@ -20,6 +21,10 @@
         [
             "JPEG Images",
             ".jpeg"
+        ],
+        [
+            "SVG Images",
+            ".svg"
         ]
     ]
 }
